@@ -18,25 +18,57 @@
  */
 package org.apache.polaris.benchmarks.parameters
 
-/**
- * Case class to hold the authentication parameters for the benchmark.
- *
- * @param clientId The client ID for authentication.
- * @param clientSecret The client secret for authentication.
- * @param refreshIntervalSeconds Refresh interval for the authentication token in seconds.
- * @param maxRetries Maximum number of retry attempts for authentication failures.
- * @param retryableHttpCodes HTTP status codes that should trigger a retry.
- */
+sealed trait AuthType
+object AuthType {
+  case object OAuth2 extends AuthType
+  case object Sigv4 extends AuthType
+
+  def fromString(s: String): AuthType = s.toLowerCase match {
+    case "oauth2" => OAuth2
+    case "sigv4"  => Sigv4
+    case other    => throw new IllegalArgumentException(s"Unknown auth type: $other")
+  }
+}
+
+case class Sigv4Parameters(
+    accessKey: String,
+    secretKey: String,
+    region: String,
+    service: String
+) {
+  require(accessKey != null && accessKey.nonEmpty, "SIGV4 access key cannot be null or empty")
+  require(secretKey != null && secretKey.nonEmpty, "SIGV4 secret key cannot be null or empty")
+  require(region != null && region.nonEmpty, "SIGV4 region cannot be null or empty")
+  require(service != null && service.nonEmpty, "SIGV4 service cannot be null or empty")
+}
+
 case class AuthParameters(
-    clientId: String,
-    clientSecret: String,
+    authType: AuthType,
+    clientId: Option[String],
+    clientSecret: Option[String],
     refreshIntervalSeconds: Int,
     maxRetries: Int,
-    retryableHttpCodes: Set[Int]
+    retryableHttpCodes: Set[Int],
+    sigv4: Option[Sigv4Parameters]
 ) {
-  require(clientId != null && clientId.nonEmpty, "Client ID cannot be null or empty")
-  require(clientSecret != null && clientSecret.nonEmpty, "Client secret cannot be null or empty")
   require(refreshIntervalSeconds > 0, "Refresh interval must be positive")
   require(maxRetries >= 0, "Max retries cannot be negative")
   require(retryableHttpCodes != null, "Retryable HTTP codes cannot be null")
+
+  authType match {
+    case AuthType.OAuth2 =>
+      require(
+        clientId.isDefined && clientId.get.nonEmpty,
+        "Client ID is required for OAuth2 auth"
+      )
+      require(
+        clientSecret.isDefined && clientSecret.get.nonEmpty,
+        "Client secret is required for OAuth2 auth"
+      )
+    case AuthType.Sigv4 =>
+      require(sigv4.isDefined, "SIGV4 parameters are required for SIGV4 auth")
+  }
+
+  def isOAuth2: Boolean = authType == AuthType.OAuth2
+  def isSigv4: Boolean = authType == AuthType.Sigv4
 }

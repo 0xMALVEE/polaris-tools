@@ -39,7 +39,8 @@ case class ViewActions(
     wp: WorkloadParameters,
     accessToken: AtomicReference[String],
     maxRetries: Int = 10,
-    retryableHttpCodes: Set[Int] = Set(409, 500)
+    retryableHttpCodes: Set[Int] = Set(409, 500),
+    apiPrefix: String = "/api/catalog/v1"
 ) {
   private val logger = LoggerFactory.getLogger(getClass)
   private val mangler = Mangler(dp.mangleNames)
@@ -52,7 +53,6 @@ case class ViewActions(
    */
   def viewIdentityFeeder(): Feeder[Any] = dp.nAryTree.lastLevelOrdinals.iterator
     .flatMap { namespaceId =>
-      val catalogId = 0
       val parentNamespacePath: Seq[String] = dp.nAryTree
         .pathToRoot(namespaceId)
         .map(mangler.maybeMangleNs)
@@ -63,7 +63,7 @@ case class ViewActions(
           // Ensure the view ID matches that of the associated table
           val viewId = positionInLevel * dp.numTablesPerNs + j
           Map(
-            "catalogName" -> s"C_$catalogId",
+            "catalogName" -> dp.catalogName,
             "parentNamespacePath" -> parentNamespacePath,
             "multipartNamespace" -> parentNamespacePath.mkString("%1F"),
             "viewName" -> mangler.maybeMangleView(viewId),
@@ -137,7 +137,7 @@ case class ViewActions(
 
   val createView: ChainBuilder = retryOnHttpStatus(maxRetries, retryableHttpCodes, "Create View")(
     http("Create View")
-      .post("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/views")
+      .post(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/views")
       .header("Authorization", "Bearer #{accessToken}")
       .header("Content-Type", "application/json")
       .body(StringBody("""{
@@ -168,12 +168,12 @@ case class ViewActions(
                          |  },
                          | "properties": #{initialJsonProperties}
                          |}""".stripMargin))
-      .check(status.is(200))
+      .check(status.in(200, 409))
   )
 
   val fetchView: ChainBuilder = exec(
     http("Fetch single View")
-      .get("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/views/#{viewName}")
+      .get(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/views/#{viewName}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
       .check(jsonPath("$.metadata.view-uuid").saveAs("viewUuid"))
@@ -190,14 +190,14 @@ case class ViewActions(
    */
   val checkViewExists: ChainBuilder = exec(
     http("Check View Exists")
-      .head("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/views/#{viewName}")
+      .head(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/views/#{viewName}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(204))
   )
 
   val fetchAllViews: ChainBuilder = exec(
     http("Fetch children Views")
-      .get("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/views")
+      .get(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/views")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
   )
@@ -211,7 +211,7 @@ case class ViewActions(
   val updateView: ChainBuilder =
     retryOnHttpStatus(maxRetries, retryableHttpCodes, "Update View")(
       http("Update View")
-        .post("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/views/#{viewName}")
+        .post(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/views/#{viewName}")
         .header("Authorization", "Bearer #{accessToken}")
         .header("Content-Type", "application/json")
         .body(

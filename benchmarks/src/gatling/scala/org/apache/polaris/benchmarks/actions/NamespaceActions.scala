@@ -48,7 +48,8 @@ case class NamespaceActions(
     wp: WorkloadParameters,
     accessToken: AtomicReference[String],
     maxRetries: Int = 10,
-    retryableHttpCodes: Set[Int] = Set(409, 500)
+    retryableHttpCodes: Set[Int] = Set(409, 500),
+    apiPrefix: String = "/api/catalog/v1"
 ) {
   private val logger = LoggerFactory.getLogger(getClass)
   private val mangler = Mangler(dp.mangleNames)
@@ -68,7 +69,7 @@ case class NamespaceActions(
         .pathToRoot(namespaceId)
         .map(mangler.maybeMangleNs)
       Map(
-        "catalogName" -> "C_0",
+        "catalogName" -> dp.catalogName,
         "namespaceId" -> tableId,
         "namespacePath" -> namespacePath,
         "namespaceJsonPath" -> Json.toJson(namespacePath).toString(),
@@ -150,7 +151,7 @@ case class NamespaceActions(
   val createNamespace: ChainBuilder =
     retryOnHttpStatus(maxRetries, retryableHttpCodes, "Create namespace")(
       http("Create Namespace")
-        .post("/api/catalog/v1/#{catalogName}/namespaces")
+        .post(s"$apiPrefix/#{catalogName}/namespaces")
         .header("Authorization", "Bearer #{accessToken}")
         .header("Content-Type", "application/json")
         .body(
@@ -162,8 +163,7 @@ case class NamespaceActions(
           )
         )
         .saveHttpStatusCode()
-        .check(status.is(200))
-        .check(jsonPath("$.namespace").is("#{namespaceJsonPath}"))
+        .check(status.in(200, 409))
     )
 
   /**
@@ -175,7 +175,7 @@ case class NamespaceActions(
    */
   val fetchNamespace: ChainBuilder = exec(
     http("Fetch single namespace")
-      .get("/api/catalog/v1/#{catalogName}/namespaces/#{namespaceMultipartPath}")
+      .get(s"$apiPrefix/#{catalogName}/namespaces/#{namespaceMultipartPath}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
       .check(jsonPath("$.namespace").is("#{namespaceJsonPath}"))
@@ -196,7 +196,7 @@ case class NamespaceActions(
    */
   val checkNamespaceExists: ChainBuilder = exec(
     http("Check Namespace Exists")
-      .head("/api/catalog/v1/#{catalogName}/namespaces/#{namespaceMultipartPath}")
+      .head(s"$apiPrefix/#{catalogName}/namespaces/#{namespaceMultipartPath}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(204))
   )
@@ -208,7 +208,7 @@ case class NamespaceActions(
    */
   val fetchAllChildrenNamespaces: ChainBuilder = exec(
     http("Fetch child namespaces")
-      .get("/api/catalog/v1/#{catalogName}/namespaces?parent=#{namespaceMultipartPath}")
+      .get(s"$apiPrefix/#{catalogName}/namespaces?parent=#{namespaceMultipartPath}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
   )
@@ -216,7 +216,7 @@ case class NamespaceActions(
   val updateNamespaceProperties: ChainBuilder =
     retryOnHttpStatus(maxRetries, retryableHttpCodes, "Update namespace")(
       http("Update namespace")
-        .post("/api/catalog/v1/#{catalogName}/namespaces/#{namespaceMultipartPath}/properties")
+        .post(s"$apiPrefix/#{catalogName}/namespaces/#{namespaceMultipartPath}/properties")
         .header("Authorization", "Bearer #{accessToken}")
         .header("Content-Type", "application/json")
         .body(

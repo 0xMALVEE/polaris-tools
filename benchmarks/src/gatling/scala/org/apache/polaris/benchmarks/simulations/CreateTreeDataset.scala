@@ -35,8 +35,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 
 /**
- * This simulation is a 100% write workload that creates a tree dataset in Polaris. It is intended
- * to be used against an empty Polaris instance.
+ * This simulation is a 100% write workload that creates a tree dataset. It can be used against
+ * Polaris or any Iceberg REST Catalog implementation.
+ *
+ * When `skip-catalog-creation` is false (default), the simulation creates catalogs using the
+ * Polaris Management API. When true, it assumes a pre-existing catalog and only creates
+ * namespaces, tables, and views using the standard Iceberg REST API.
  */
 class CreateTreeDataset extends Simulation {
   private val logger = LoggerFactory.getLogger(getClass)
@@ -55,9 +59,12 @@ class CreateTreeDataset extends Simulation {
   private val numNamespaces: Int = dp.nAryTree.numberOfNodes
   private val setupActions = SetupActions(cp, ap)
   private val catalogActions = CatalogActions(dp, setupActions.accessToken, 0, Set())
-  private val namespaceActions = NamespaceActions(dp, wp, setupActions.accessToken, 5, Set(500))
-  private val tableActions = TableActions(dp, wp, setupActions.accessToken, 5, Set(500))
-  private val viewActions = ViewActions(dp, wp, setupActions.accessToken, 5, Set(500))
+  private val namespaceActions =
+    NamespaceActions(dp, wp, setupActions.accessToken, 5, Set(500), cp.apiPrefix)
+  private val tableActions =
+    TableActions(dp, wp, setupActions.accessToken, 5, Set(500), cp.apiPrefix)
+  private val viewActions =
+    ViewActions(dp, wp, setupActions.accessToken, 5, Set(500), cp.apiPrefix)
 
   private val createdCatalogs = new AtomicInteger()
   private val createdNamespaces = new AtomicInteger()
@@ -65,7 +72,7 @@ class CreateTreeDataset extends Simulation {
   private val createdViews = new AtomicInteger()
 
   // --------------------------------------------------------------------------------
-  // Workload: Create catalogs
+  // Workload: Create catalogs (skipped when using pre-existing catalog)
   // --------------------------------------------------------------------------------
   val createCatalogs: ScenarioBuilder =
     scenario("Create catalogs using the Polaris Management REST API")
@@ -75,6 +82,16 @@ class CreateTreeDataset extends Simulation {
       )(
         feed(catalogActions.feeder())
           .exec(catalogActions.createCatalog)
+      )
+
+  // Scenario for setting up pre-existing catalog context (no API calls, just sets session vars)
+  val useExistingCatalog: ScenarioBuilder =
+    scenario("Use pre-existing catalog")
+      .exec(setupActions.restoreAccessTokenInSession)
+      .exec(session =>
+        session
+          .set("catalogName", dp.catalogName)
+          .set("defaultBaseLocation", s"${dp.defaultBaseLocation}/${dp.catalogName}")
       )
 
   // --------------------------------------------------------------------------------
@@ -116,21 +133,32 @@ class CreateTreeDataset extends Simulation {
   // --------------------------------------------------------------------------------
   // Build up the HTTP protocol configuration and set up the simulation
   // --------------------------------------------------------------------------------
-  private val httpProtocol = http
+  private val baseHttpProtocol = http
     .baseUrl(cp.baseUrl)
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
     .disableCaching
 
+  private val httpProtocol = setupActions.configureHttpProtocol(baseHttpProtocol)
+
   // Get the configured throughput for tables and views
   private val tableThroughput = wp.createTreeDataset.tableThroughput
   private val viewThroughput = wp.createTreeDataset.viewThroughput
+
+  // Choose catalog setup based on configuration
+  private val catalogSetupScenario = if (dp.skipCatalogCreation) {
+    logger.info(s"Using pre-existing catalog: ${dp.catalogName}")
+    useExistingCatalog.inject(atOnceUsers(1)).protocols(httpProtocol)
+  } else {
+    logger.info(s"Creating ${dp.numCatalogs} catalog(s) via Polaris Management API")
+    createCatalogs.inject(atOnceUsers(1)).protocols(httpProtocol)
+  }
 
   setUp(
     setupActions.continuouslyRefreshOauthToken().inject(atOnceUsers(1)).protocols(httpProtocol),
     setupActions.waitForAuthentication
       .inject(atOnceUsers(1))
-      .andThen(createCatalogs.inject(atOnceUsers(1)).protocols(httpProtocol))
+      .andThen(catalogSetupScenario)
       .andThen(
         createNamespaces
           .inject(

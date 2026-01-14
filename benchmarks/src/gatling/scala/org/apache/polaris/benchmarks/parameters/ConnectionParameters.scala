@@ -22,11 +22,13 @@ package org.apache.polaris.benchmarks.parameters
  * Case class to hold the connection parameters for the benchmark.
  *
  * @param baseUrl The base URL of the Polaris service.
+ * @param apiPrefix The API path prefix for Iceberg REST Catalog endpoints.
  */
-case class ConnectionParameters(baseUrl: String) {
+case class ConnectionParameters(baseUrl: String, apiPrefix: String = "/api/catalog/v1") {
   require(baseUrl != null && baseUrl.nonEmpty, "Base URL cannot be null or empty")
   require(
     baseUrl.startsWith("http://") || baseUrl.startsWith("https://"),
     "Base URL must start with http:// or https://"
   )
+  require(apiPrefix != null, "API prefix cannot be null")
 }

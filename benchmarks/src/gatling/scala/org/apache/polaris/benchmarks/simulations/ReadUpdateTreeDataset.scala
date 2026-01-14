@@ -56,9 +56,12 @@ class ReadUpdateTreeDataset extends Simulation {
   // --------------------------------------------------------------------------------
   private val setupActions = SetupActions(cp, ap)
   private val catActions = CatalogActions(dp, setupActions.accessToken)
-  private val nsActions = NamespaceActions(dp, wp, setupActions.accessToken)
-  private val tblActions = TableActions(dp, wp, setupActions.accessToken)
-  private val viewActions = ViewActions(dp, wp, setupActions.accessToken)
+  private val nsActions =
+    NamespaceActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
+  private val tblActions =
+    TableActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
+  private val viewActions =
+    ViewActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
 
   private val nsListFeeder = new CircularIterator(nsActions.namespaceIdentityFeeder)
   private val nsExistsFeeder = new CircularIterator(nsActions.namespaceIdentityFeeder)
@@ -107,11 +110,13 @@ class ReadUpdateTreeDataset extends Simulation {
   // --------------------------------------------------------------------------------
   // Build up the HTTP protocol configuration and set up the simulation
   // --------------------------------------------------------------------------------
-  private val httpProtocol = http
+  private val baseHttpProtocol = http
     .baseUrl(cp.baseUrl)
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
     .disableCaching
+
+  private val httpProtocol = setupActions.configureHttpProtocol(baseHttpProtocol)
 
   // Get the configured throughput and duration
   private val throughput = wp.readUpdateTreeDataset.throughput

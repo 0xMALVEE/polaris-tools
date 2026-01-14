@@ -69,16 +69,19 @@ class WeightedWorkloadOnTreeDataset extends Simulation {
   // Helper values
   // --------------------------------------------------------------------------------
   private val setupActions = SetupActions(cp, ap)
-  private val tblActions = TableActions(dp, wp, setupActions.accessToken)
+  private val tblActions =
+    TableActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
 
   // --------------------------------------------------------------------------------
   // Build up the HTTP protocol configuration and set up the simulation
   // --------------------------------------------------------------------------------
-  private val httpProtocol = http
+  private val baseHttpProtocol = http
     .baseUrl(cp.baseUrl)
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
     .disableCaching
+
+  private val httpProtocol = setupActions.configureHttpProtocol(baseHttpProtocol)
 
   // --------------------------------------------------------------------------------
   // Create all reader/writer scenarios and prepare them for injection

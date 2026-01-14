@@ -52,9 +52,12 @@ class ReadTreeDataset extends Simulation {
   private val numNamespaces: Int = dp.nAryTree.numberOfNodes
   private val setupActions = SetupActions(cp, ap)
   private val catalogActions = CatalogActions(dp, setupActions.accessToken)
-  private val namespaceActions = NamespaceActions(dp, wp, setupActions.accessToken)
-  private val tableActions = TableActions(dp, wp, setupActions.accessToken)
-  private val viewActions = ViewActions(dp, wp, setupActions.accessToken)
+  private val namespaceActions =
+    NamespaceActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
+  private val tableActions =
+    TableActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
+  private val viewActions =
+    ViewActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
 
   private val verifiedCatalogs = new AtomicInteger()
   private val verifiedNamespaces = new AtomicInteger()
@@ -118,11 +121,13 @@ class ReadTreeDataset extends Simulation {
   // --------------------------------------------------------------------------------
   // Build up the HTTP protocol configuration and set up the simulation
   // --------------------------------------------------------------------------------
-  private val httpProtocol = http
+  private val baseHttpProtocol = http
     .baseUrl(cp.baseUrl)
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
     .disableCaching
+
+  private val httpProtocol = setupActions.configureHttpProtocol(baseHttpProtocol)
 
   // Get the configured throughput for tables and views
   private val namespaceThroughput = wp.readTreeDataset.namespaceThroughput

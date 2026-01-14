@@ -43,6 +43,183 @@ repositories {
     mavenCentral()
 }
 
+// Create a standalone distribution with all dependencies
+val standaloneDistDir = layout.buildDirectory.dir("standalone")
+
+tasks.register<Copy>("copyDependencies") {
+    from(configurations.getByName("gatlingRuntimeClasspath"))
+    into(standaloneDistDir.map { it.dir("lib") })
+}
+
+tasks.register<Copy>("copySimulations") {
+    dependsOn("gatlingClasses")
+    from(layout.buildDirectory.dir("classes/scala/gatling"))
+    into(standaloneDistDir.map { it.dir("lib/classes") })
+}
+
+tasks.register<Copy>("copyResources") {
+    from("src/gatling/resources")
+    into(standaloneDistDir.map { it.dir("conf") })
+}
+
+tasks.register("standaloneDist") {
+    dependsOn("copyDependencies", "copySimulations", "copyResources")
+    group = "distribution"
+    description = "Creates a standalone distribution with all dependencies"
+
+    doLast {
+        // Create runner script
+        val scriptFile = standaloneDistDir.get().file("run-benchmark.sh").asFile
+        scriptFile.writeText("""
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="${'$'}(cd "${'$'}(dirname "${'$'}0")" && pwd)"
+LIB_DIR="${'$'}SCRIPT_DIR/lib"
+CONF_DIR="${'$'}SCRIPT_DIR/conf"
+
+# Find all JARs
+CLASSPATH="${'$'}LIB_DIR/classes"
+for jar in "${'$'}LIB_DIR"/*.jar; do
+    CLASSPATH="${'$'}CLASSPATH:${'$'}jar"
+done
+
+# Default simulation
+SIMULATION="${'$'}{1:-org.apache.polaris.benchmarks.simulations.CreateTreeDataset}"
+
+# Config file (optional second argument)
+CONFIG_OPTS=""
+if [ -n "${'$'}2" ]; then
+    CONFIG_OPTS="-Dconfig.file=${'$'}2"
+elif [ -f "${'$'}CONF_DIR/application.conf" ]; then
+    CONFIG_OPTS="-Dconfig.file=${'$'}CONF_DIR/application.conf"
+fi
+
+echo "Running simulation: ${'$'}SIMULATION"
+echo "Classpath: ${'$'}CLASSPATH"
+
+java -cp "${'$'}CLASSPATH" ${'$'}CONFIG_OPTS \
+    -Dgatling.core.directory.results="${'$'}SCRIPT_DIR/results" \
+    io.gatling.app.Gatling \
+    --simulation "${'$'}SIMULATION" \
+    --results-folder "${'$'}SCRIPT_DIR/results"
+""".trimIndent())
+        scriptFile.setExecutable(true)
+
+        println("Standalone distribution created at: ${standaloneDistDir.get().asFile.absolutePath}")
+        println("Run with: ./run-benchmark.sh [SimulationClass] [config-file]")
+    }
+}
+
+// Create distributable tarball (requires Java on target machine)
+tasks.register<Exec>("distTarball") {
+    dependsOn("standaloneDist")
+    group = "distribution"
+    description = "Creates a tarball of the standalone distribution"
+
+    val tarball = layout.buildDirectory.file("iceberg-rest-benchmark.tar.gz")
+
+    commandLine("tar", "-czf", tarball.get().asFile.absolutePath,
+        "-C", layout.buildDirectory.get().asFile.absolutePath, "standalone")
+
+    doLast {
+        println("Tarball created: ${tarball.get().asFile.absolutePath}")
+    }
+}
+
+// Bundle JRE for fully standalone distribution (no Java required on target)
+tasks.register("bundleJre") {
+    dependsOn("standaloneDist")
+    group = "distribution"
+    description = "Downloads and bundles a JRE for fully standalone distribution"
+
+    doLast {
+        val jreDir = standaloneDistDir.get().dir("jre").asFile
+        val jreTarball = layout.buildDirectory.file("jre.tar.gz").get().asFile
+
+        // Detect platform
+        val os = System.getProperty("os.name").lowercase()
+        val arch = System.getProperty("os.arch").let {
+            if (it == "amd64" || it == "x86_64") "x64" else it
+        }
+        val platform = when {
+            os.contains("linux") -> "linux"
+            os.contains("mac") -> "mac"
+            os.contains("win") -> "windows"
+            else -> "linux"
+        }
+
+        val url = "https://api.adoptium.net/v3/binary/latest/21/ga/$platform/$arch/jre/hotspot/normal/eclipse?project=jdk"
+
+        println("Downloading JRE from Adoptium...")
+        exec {
+            commandLine("curl", "-L", "-o", jreTarball.absolutePath, url)
+        }
+
+        println("Extracting JRE...")
+        jreDir.mkdirs()
+        exec {
+            commandLine("tar", "-xzf", jreTarball.absolutePath, "-C", jreDir.absolutePath, "--strip-components=1")
+        }
+
+        // Update run script to use bundled JRE
+        val scriptFile = standaloneDistDir.get().file("run-benchmark.sh").asFile
+        scriptFile.writeText("""
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="${'$'}(cd "${'$'}(dirname "${'$'}0")" && pwd)"
+LIB_DIR="${'$'}SCRIPT_DIR/lib"
+CONF_DIR="${'$'}SCRIPT_DIR/conf"
+JAVA_CMD="${'$'}SCRIPT_DIR/jre/bin/java"
+
+# Find all JARs
+CLASSPATH="${'$'}LIB_DIR/classes"
+for jar in "${'$'}LIB_DIR"/*.jar; do
+    CLASSPATH="${'$'}CLASSPATH:${'$'}jar"
+done
+
+# Default simulation
+SIMULATION="${'$'}{1:-org.apache.polaris.benchmarks.simulations.CreateTreeDataset}"
+
+# Config file (optional second argument)
+CONFIG_OPTS=""
+if [ -n "${'$'}2" ]; then
+    CONFIG_OPTS="-Dconfig.file=${'$'}2"
+elif [ -f "${'$'}CONF_DIR/application.conf" ]; then
+    CONFIG_OPTS="-Dconfig.file=${'$'}CONF_DIR/application.conf"
+fi
+
+echo "Running simulation: ${'$'}SIMULATION"
+
+"${'$'}JAVA_CMD" -cp "${'$'}CLASSPATH" ${'$'}CONFIG_OPTS \
+    -Dgatling.core.directory.results="${'$'}SCRIPT_DIR/results" \
+    io.gatling.app.Gatling \
+    --simulation "${'$'}SIMULATION" \
+    --results-folder "${'$'}SCRIPT_DIR/results"
+""".trimIndent())
+        scriptFile.setExecutable(true)
+
+        println("JRE bundled successfully!")
+    }
+}
+
+// Create fully standalone tarball with bundled JRE
+tasks.register<Exec>("distTarballWithJre") {
+    dependsOn("bundleJre")
+    group = "distribution"
+    description = "Creates a tarball with bundled JRE (no Java required on target)"
+
+    val tarball = layout.buildDirectory.file("iceberg-rest-benchmark-standalone.tar.gz")
+
+    commandLine("tar", "-czf", tarball.get().asFile.absolutePath,
+        "-C", layout.buildDirectory.get().asFile.absolutePath, "standalone")
+
+    doLast {
+        println("Standalone tarball created: ${tarball.get().asFile.absolutePath}")
+    }
+}
+
 spotless {
     scala {
         // Use scalafmt for Scala formatting

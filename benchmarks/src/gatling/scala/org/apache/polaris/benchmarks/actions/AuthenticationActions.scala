@@ -55,8 +55,8 @@ case class AuthenticationActions(
    */
   def feeder(): Feeder[String] = Iterator.continually(
     Map(
-      "clientId" -> ap.clientId,
-      "clientSecret" -> ap.clientSecret
+      "clientId" -> ap.clientId.getOrElse(""),
+      "clientSecret" -> ap.clientSecret.getOrElse("")
     )
   )
 

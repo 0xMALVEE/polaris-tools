@@ -32,15 +32,41 @@ object BenchmarkConfig {
     val workload: Config = config.getConfig("workload")
 
     val connectionParams = ConnectionParameters(
-      http.getString("base-url")
+      http.getString("base-url"),
+      http.getString("api-prefix")
     )
 
+    val authType = AuthType.fromString(auth.getString("type"))
+    val sigv4Params = if (authType == AuthType.Sigv4) {
+      val sigv4Config = auth.getConfig("sigv4")
+      Some(
+        Sigv4Parameters(
+          sigv4Config.getString("access-key"),
+          sigv4Config.getString("secret-key"),
+          sigv4Config.getString("region"),
+          sigv4Config.getString("service")
+        )
+      )
+    } else {
+      None
+    }
+
+    def getOptionalString(config: Config, path: String): Option[String] = {
+      if (config.hasPath(path) && !config.getIsNull(path)) {
+        Some(config.getString(path)).filter(_.nonEmpty)
+      } else {
+        None
+      }
+    }
+
     val authParams = AuthParameters(
-      auth.getString("client-id"),
-      auth.getString("client-secret"),
+      authType,
+      getOptionalString(auth, "client-id"),
+      getOptionalString(auth, "client-secret"),
       auth.getInt("refresh-interval-seconds"),
       auth.getInt("max-retries"),
-      auth.getIntList("retryable-http-codes").toArray.map(_.asInstanceOf[Int]).toSet
+      auth.getIntList("retryable-http-codes").toArray.map(_.asInstanceOf[Int]).toSet,
+      sigv4Params
     )
 
     val workloadParams = {
@@ -80,6 +106,8 @@ object BenchmarkConfig {
     }
 
     val datasetParams = DatasetParameters(
+      dataset.getBoolean("skip-catalog-creation"),
+      dataset.getString("catalog-name"),
       dataset.getInt("num-catalogs"),
       dataset.getString("default-base-location"),
       dataset.getInt("namespace-width"),

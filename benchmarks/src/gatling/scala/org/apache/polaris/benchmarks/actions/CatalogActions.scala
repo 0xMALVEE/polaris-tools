@@ -53,19 +53,32 @@ case class CatalogActions(
    * catalog will be named "C_n" where n is a sequential number, and will have a corresponding
    * storage location under the configured base path.
    *
+   * When skipCatalogCreation is enabled, returns a single-element feeder with the configured
+   * catalog name for use by other operations.
+   *
    * @return An iterator providing catalog names and their storage locations
    */
-  def feeder(): Feeder[String] = Iterator
-    .from(0)
-    .map { i =>
-      val catalogName = s"C_$i"
+  def feeder(): Feeder[String] = if (dp.skipCatalogCreation) {
+    Iterator.single(
       Map(
-        "catalogName" -> catalogName,
-        "defaultBaseLocation" -> s"${dp.defaultBaseLocation}/$catalogName",
+        "catalogName" -> dp.catalogName,
+        "defaultBaseLocation" -> s"${dp.defaultBaseLocation}/${dp.catalogName}",
         "storageConfigInfo" -> dp.storageConfigInfo
       )
-    }
-    .take(dp.numCatalogs)
+    )
+  } else {
+    Iterator
+      .from(0)
+      .map { i =>
+        val catalogName = s"C_$i"
+        Map(
+          "catalogName" -> catalogName,
+          "defaultBaseLocation" -> s"${dp.defaultBaseLocation}/$catalogName",
+          "storageConfigInfo" -> dp.storageConfigInfo
+        )
+      }
+      .take(dp.numCatalogs)
+  }
 
   /**
    * Creates a new Iceberg catalog with FILE storage type. The catalog is created as an INTERNAL

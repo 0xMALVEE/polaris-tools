@@ -23,6 +23,8 @@ import org.apache.polaris.benchmarks.NAryTreeBuilder
 /**
  * Case class to hold the dataset parameters for the benchmark.
  *
+ * @param skipCatalogCreation Whether to skip catalog creation (use pre-existing catalog).
+ * @param catalogName The name of the pre-existing catalog when skipCatalogCreation is true.
  * @param numCatalogs The number of catalogs to create.
  * @param defaultBaseLocation The default base location for the datasets.
  * @param nsWidth The width of the namespace n-ary tree.
@@ -40,6 +42,8 @@ import org.apache.polaris.benchmarks.NAryTreeBuilder
  * @param mangleNames Whether to mangle entity names to have longer, less predictable names.
  */
 case class DatasetParameters(
+    skipCatalogCreation: Boolean,
+    catalogName: String,
     numCatalogs: Int,
     defaultBaseLocation: String,
     nsWidth: Int,

@@ -50,7 +50,8 @@ case class TableActions(
     wp: WorkloadParameters,
     accessToken: AtomicReference[String],
     maxRetries: Int = 10,
-    retryableHttpCodes: Set[Int] = Set(409, 500)
+    retryableHttpCodes: Set[Int] = Set(409, 500),
+    apiPrefix: String = "/api/catalog/v1"
 ) {
   private val logger = LoggerFactory.getLogger(getClass)
   private val mangler = Mangler(dp.mangleNames)
@@ -72,7 +73,7 @@ case class TableActions(
         .map { j =>
           val tableId = positionInLevel * dp.numTablesPerNs + j
           Map(
-            "catalogName" -> "C_0",
+            "catalogName" -> dp.catalogName,
             "parentNamespacePath" -> parentNamespacePath,
             "multipartNamespace" -> parentNamespacePath.mkString("%1F"),
             "tableName" -> mangler.maybeMangleTable(tableId)
@@ -152,7 +153,7 @@ case class TableActions(
    */
   val createTable: ChainBuilder = retryOnHttpStatus(maxRetries, retryableHttpCodes, "Create Table")(
     http("Create Table")
-      .post("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/tables")
+      .post(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/tables")
       .header("Authorization", "Bearer #{accessToken}")
       .header("Content-Type", "application/json")
       .body(
@@ -170,7 +171,7 @@ case class TableActions(
         )
       )
       .saveHttpStatusCode()
-      .check(status.is(200))
+      .check(status.in(200, 409))
   )
 
   /**
@@ -183,7 +184,7 @@ case class TableActions(
    */
   val fetchTable: ChainBuilder = exec(
     http("Fetch single Table")
-      .get("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/tables/#{tableName}")
+      .get(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/tables/#{tableName}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
       .check(jsonPath("$.metadata.table-uuid").saveAs("tableUuid"))
@@ -200,7 +201,7 @@ case class TableActions(
    */
   val checkTableExists: ChainBuilder = exec(
     http("Check Table Exists")
-      .head("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/tables/#{tableName}")
+      .head(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/tables/#{tableName}")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(204))
   )
@@ -211,7 +212,7 @@ case class TableActions(
    */
   val fetchAllTables: ChainBuilder = exec(
     http("Fetch children Tables")
-      .get("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/tables")
+      .get(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/tables")
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
   )
@@ -225,7 +226,7 @@ case class TableActions(
   val updateTable: ChainBuilder =
     retryOnHttpStatus(maxRetries, retryableHttpCodes, "Update Table")(
       http("Update Table")
-        .post("/api/catalog/v1/#{catalogName}/namespaces/#{multipartNamespace}/tables/#{tableName}")
+        .post(s"$apiPrefix/#{catalogName}/namespaces/#{multipartNamespace}/tables/#{tableName}")
         .header("Authorization", "Bearer #{accessToken}")
         .header("Content-Type", "application/json")
         .body(

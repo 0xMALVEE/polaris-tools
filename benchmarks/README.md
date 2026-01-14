@@ -39,6 +39,8 @@ These parameters must be consistent across all benchmarks and are configured und
 
 ```hocon
 dataset.tree {
+  skip-catalog-creation = false                  # Skip catalog creation (use pre-existing catalog)
+  catalog-name = "C_0"                           # Name of pre-existing catalog (when skip-catalog-creation = true)
   num-catalogs = 1                               # Number of catalogs to create
   namespace-width = 2                            # Width of the namespace tree
   namespace-depth = 4                            # Depth of the namespace tree
@@ -124,6 +126,34 @@ dataset.tree {
   storage-config-info = "{\"storageType\": \"S3\", \"roleArn\": \"arn:aws:iam::123456789012:role/polaris-demo-role\", \"allowedLocations\": [\"s3://polaris-demo/benchmarks\"], \"region\": \"eu-central-1\"}"
 }
 ```
+
+### Using with any Iceberg REST Catalog (Lakekeeper, Nessie, Gravitino, etc.)
+
+The benchmarks can run against any Iceberg REST Catalog implementation, not just Polaris. To do this, set `skip-catalog-creation = true` and create your catalog beforehand using your catalog's specific management API or CLI.
+
+Example `application.conf` for Lakekeeper:
+
+```hocon
+http {
+  base-url = "http://localhost:8181"
+}
+
+auth {
+  client-id = "your-client-id"
+  client-secret = "your-client-secret"
+}
+
+dataset.tree {
+  skip-catalog-creation = true
+  catalog-name = "my-catalog"
+  default-base-location = "s3://my-bucket/warehouse"
+}
+```
+
+When `skip-catalog-creation` is enabled:
+- The benchmark skips the Polaris-specific catalog creation step (`/api/management/v1/catalogs`)
+- All other operations use the standard Iceberg REST Catalog API (`/api/catalog/v1/...`)
+- You must create the catalog manually before running the benchmark
 
 ## Running the Benchmarks
 

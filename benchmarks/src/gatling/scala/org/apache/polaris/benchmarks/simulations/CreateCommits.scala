@@ -49,8 +49,10 @@ class CreateCommits extends Simulation {
   // Helper values
   // --------------------------------------------------------------------------------
   private val setupActions = SetupActions(cp, ap)
-  private val tableActions = TableActions(dp, wp, setupActions.accessToken)
-  private val viewActions = ViewActions(dp, wp, setupActions.accessToken)
+  private val tableActions =
+    TableActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
+  private val viewActions =
+    ViewActions(dp, wp, setupActions.accessToken, apiPrefix = cp.apiPrefix)
 
   // --------------------------------------------------------------------------------
   // Read and write workloads:
@@ -74,10 +76,12 @@ class CreateCommits extends Simulation {
       .feed(viewActions.propertyUpdateFeeder())
       .exec(viewActions.updateView)
 
-  private val httpProtocol = http
+  private val baseHttpProtocol = http
     .baseUrl(cp.baseUrl)
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
+
+  private val httpProtocol = setupActions.configureHttpProtocol(baseHttpProtocol)
 
   private val tableCommitsThroughput = wp.createCommits.tableCommitsThroughput
   private val viewCommitsThroughput = wp.createCommits.viewCommitsThroughput
