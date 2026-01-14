@@ -29,7 +29,8 @@ import javax.crypto.spec.SecretKeySpec
 case class Sigv4SignedRequest(
     authorization: String,
     xAmzDate: String,
-    xAmzContentSha256: String
+    xAmzContentSha256: String,
+    canonicalPath: String = ""
 )
 
 case class Sigv4Signer(
@@ -54,7 +55,12 @@ case class Sigv4Signer(
 
     val uri = new URI(url)
     val host = uri.getHost + (if (uri.getPort > 0) s":${uri.getPort}" else "")
-    val path = Option(uri.getRawPath).filter(_.nonEmpty).getOrElse("/")
+    // For MinIO S3 Tables: first replace unit separator (0x1F) with %1F,
+    // then encode the path (which will encode % as %25)
+    // This matches MinIO's signature calculation in signature-v4.go
+    val decodedPath = Option(uri.getPath).filter(_.nonEmpty).getOrElse("/")
+    val pathWithEncodedUnitSep = decodedPath.replace("\u001f", "%1F")
+    val path = encodePath(pathWithEncodedUnitSep)
     val queryString = Option(uri.getRawQuery).getOrElse("")
 
     val bodyHash = hash(body.getOrElse(""))
@@ -111,7 +117,7 @@ case class Sigv4Signer(
     val authorization =
       s"$algorithm Credential=$accessKey/$credentialScope, SignedHeaders=$signedHeaders, Signature=$signature"
 
-    Sigv4SignedRequest(authorization, amzDate, bodyHash)
+    Sigv4SignedRequest(authorization, amzDate, bodyHash, path)
   }
 
   private def hash(text: String): String = {
@@ -141,5 +147,33 @@ case class Sigv4Signer(
     val kRegion = hmacSha256(kDate, region)
     val kService = hmacSha256(kRegion, service)
     hmacSha256(kService, "aws4_request")
+  }
+
+  /**
+   * Encodes a URL path following AWS S3/MinIO conventions.
+   * Only unreserved characters (A-Z, a-z, 0-9, -, _, ., ~, /) are left unencoded.
+   * All other characters are percent-encoded.
+   */
+  private def encodePath(path: String): String = {
+    val result = new StringBuilder
+    for (char <- path) {
+      if (isUnreservedChar(char)) {
+        result.append(char)
+      } else {
+        val bytes = char.toString.getBytes(StandardCharsets.UTF_8)
+        for (b <- bytes) {
+          result.append("%")
+          result.append(f"${b & 0xff}%02X")
+        }
+      }
+    }
+    result.toString
+  }
+
+  private def isUnreservedChar(c: Char): Boolean = {
+    (c >= 'A' && c <= 'Z') ||
+    (c >= 'a' && c <= 'z') ||
+    (c >= '0' && c <= '9') ||
+    c == '-' || c == '_' || c == '.' || c == '~' || c == '/'
   }
 }

@@ -57,7 +57,9 @@ class Sigv4RequestSigner(params: Sigv4Parameters) {
     request.getHeaders.set("X-Amz-Date", signed.xAmzDate)
     request.getHeaders.set("X-Amz-Content-Sha256", signed.xAmzContentSha256)
 
-    logger.info(s"SIGV4 signed request: $method $url | Body: ${body.map(_.replace("\n", " ").take(200)).getOrElse("<empty>")}")
+    logger.info(s"SIGV4 signed request: $method $url")
+    logger.info(s"SIGV4 canonical path used for signing: ${signed.canonicalPath}")
+    logger.info(s"SIGV4 body hash: ${signed.xAmzContentSha256}")
 
     Success(request)
   }

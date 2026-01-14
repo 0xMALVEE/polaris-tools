@@ -45,25 +45,25 @@ help:
 	@echo "  make minio-create-high     - 1,280 tables, 640 views, 50 concurrency"
 	@echo "  make minio-stress          - 31K tables, 15K views, 100 concurrency"
 	@echo ""
-	@echo "MinIO Load Profiles (Read Dataset):"
+	@echo "MinIO Load Profiles (Read Dataset): [REQUIRES: minio-create-* first]"
 	@echo "  make minio-read-light      - 5 concurrent readers"
 	@echo "  make minio-read-medium     - 20 concurrent readers"
 	@echo "  make minio-read-high       - 50 concurrent readers"
 	@echo "  make minio-read-stress     - 100 concurrent readers"
 	@echo ""
-	@echo "MinIO Load Profiles (Mixed Read/Write):"
+	@echo "MinIO Load Profiles (Mixed Read/Write): [REQUIRES: minio-create-* first]"
 	@echo "  make minio-mixed-light     - 20 ops/sec, 80%% reads, 2 min"
 	@echo "  make minio-mixed-medium    - 50 ops/sec, 70%% reads, 5 min"
 	@echo "  make minio-mixed-high      - 200 ops/sec, 60%% reads, 10 min"
 	@echo "  make minio-mixed-stress    - 500 ops/sec, 50%% reads, 15 min"
 	@echo ""
-	@echo "MinIO Load Profiles (Commits):"
+	@echo "MinIO Load Profiles (Commits): [REQUIRES: minio-create-* first]"
 	@echo "  make minio-commits-light   - 7 commits/sec, 1 min"
 	@echo "  make minio-commits-medium  - 30 commits/sec, 3 min"
 	@echo "  make minio-commits-high    - 75 commits/sec, 5 min"
 	@echo "  make minio-commits-stress  - 150 commits/sec, 10 min"
 	@echo ""
-	@echo "MinIO Load Profiles (Weighted Workload):"
+	@echo "MinIO Load Profiles (Weighted Workload): [REQUIRES: minio-create-* first]"
 	@echo "  make minio-weighted-light  - 2 min duration"
 	@echo "  make minio-weighted-medium - 5 min duration"
 	@echo "  make minio-weighted-high   - 10 min duration"
@@ -384,6 +384,10 @@ minio-read-light:
 minio-read-medium:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=3 \
+		-Ddataset.tree.namespace-depth=3 \
+		-Ddataset.tree.tables-per-namespace=10 \
+		-Ddataset.tree.views-per-namespace=5 \
 		-Dworkload.read-tree-dataset.namespace-concurrency=20 \
 		-Dworkload.read-tree-dataset.table-concurrency=20 \
 		-Dworkload.read-tree-dataset.view-concurrency=10 $(GRADLE_OPTS)
@@ -392,6 +396,10 @@ minio-read-medium:
 minio-read-high:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=4 \
+		-Ddataset.tree.namespace-depth=4 \
+		-Ddataset.tree.tables-per-namespace=20 \
+		-Ddataset.tree.views-per-namespace=10 \
 		-Dworkload.read-tree-dataset.namespace-concurrency=50 \
 		-Dworkload.read-tree-dataset.table-concurrency=50 \
 		-Dworkload.read-tree-dataset.view-concurrency=25 $(GRADLE_OPTS)
@@ -400,6 +408,10 @@ minio-read-high:
 minio-read-stress:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=5 \
+		-Ddataset.tree.namespace-depth=5 \
+		-Ddataset.tree.tables-per-namespace=50 \
+		-Ddataset.tree.views-per-namespace=25 \
 		-Dworkload.read-tree-dataset.namespace-concurrency=100 \
 		-Dworkload.read-tree-dataset.table-concurrency=100 \
 		-Dworkload.read-tree-dataset.view-concurrency=50 $(GRADLE_OPTS)
@@ -417,6 +429,10 @@ minio-mixed-light:
 minio-mixed-medium:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadUpdateTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=3 \
+		-Ddataset.tree.namespace-depth=3 \
+		-Ddataset.tree.tables-per-namespace=10 \
+		-Ddataset.tree.views-per-namespace=5 \
 		-Dworkload.read-update-tree-dataset.read-write-ratio=0.7 \
 		-Dworkload.read-update-tree-dataset.throughput=50 \
 		-Dworkload.read-update-tree-dataset.duration-in-minutes=5 $(GRADLE_OPTS)
@@ -425,6 +441,10 @@ minio-mixed-medium:
 minio-mixed-high:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadUpdateTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=4 \
+		-Ddataset.tree.namespace-depth=4 \
+		-Ddataset.tree.tables-per-namespace=20 \
+		-Ddataset.tree.views-per-namespace=10 \
 		-Dworkload.read-update-tree-dataset.read-write-ratio=0.6 \
 		-Dworkload.read-update-tree-dataset.throughput=200 \
 		-Dworkload.read-update-tree-dataset.duration-in-minutes=10 $(GRADLE_OPTS)
@@ -433,6 +453,10 @@ minio-mixed-high:
 minio-mixed-stress:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadUpdateTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=5 \
+		-Ddataset.tree.namespace-depth=5 \
+		-Ddataset.tree.tables-per-namespace=50 \
+		-Ddataset.tree.views-per-namespace=25 \
 		-Dworkload.read-update-tree-dataset.read-write-ratio=0.5 \
 		-Dworkload.read-update-tree-dataset.throughput=500 \
 		-Dworkload.read-update-tree-dataset.duration-in-minutes=15 $(GRADLE_OPTS)
@@ -450,6 +474,10 @@ minio-commits-light:
 minio-commits-medium:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.CreateCommits \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=3 \
+		-Ddataset.tree.namespace-depth=3 \
+		-Ddataset.tree.tables-per-namespace=10 \
+		-Ddataset.tree.views-per-namespace=5 \
 		-Dworkload.create-commits.table-commits-throughput=20 \
 		-Dworkload.create-commits.view-commits-throughput=10 \
 		-Dworkload.create-commits.duration-in-minutes=3 $(GRADLE_OPTS)
@@ -458,6 +486,10 @@ minio-commits-medium:
 minio-commits-high:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.CreateCommits \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=4 \
+		-Ddataset.tree.namespace-depth=4 \
+		-Ddataset.tree.tables-per-namespace=20 \
+		-Ddataset.tree.views-per-namespace=10 \
 		-Dworkload.create-commits.table-commits-throughput=50 \
 		-Dworkload.create-commits.view-commits-throughput=25 \
 		-Dworkload.create-commits.duration-in-minutes=5 $(GRADLE_OPTS)
@@ -466,6 +498,10 @@ minio-commits-high:
 minio-commits-stress:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.CreateCommits \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=5 \
+		-Ddataset.tree.namespace-depth=5 \
+		-Ddataset.tree.tables-per-namespace=50 \
+		-Ddataset.tree.views-per-namespace=25 \
 		-Dworkload.create-commits.table-commits-throughput=100 \
 		-Dworkload.create-commits.view-commits-throughput=50 \
 		-Dworkload.create-commits.duration-in-minutes=10 $(GRADLE_OPTS)
@@ -481,18 +517,30 @@ minio-weighted-light:
 minio-weighted-medium:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.WeightedWorkloadOnTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=3 \
+		-Ddataset.tree.namespace-depth=3 \
+		-Ddataset.tree.tables-per-namespace=10 \
+		-Ddataset.tree.views-per-namespace=5 \
 		-Dworkload.weighted-workload-on-tree-dataset.duration-in-minutes=5 $(GRADLE_OPTS)
 
 .PHONY: minio-weighted-high
 minio-weighted-high:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.WeightedWorkloadOnTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=4 \
+		-Ddataset.tree.namespace-depth=4 \
+		-Ddataset.tree.tables-per-namespace=20 \
+		-Ddataset.tree.views-per-namespace=10 \
 		-Dworkload.weighted-workload-on-tree-dataset.duration-in-minutes=10 $(GRADLE_OPTS)
 
 .PHONY: minio-weighted-stress
 minio-weighted-stress:
 	./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.WeightedWorkloadOnTreeDataset \
 		-Dconfig.file=$(MINIO_CONFIG) \
+		-Ddataset.tree.namespace-width=5 \
+		-Ddataset.tree.namespace-depth=5 \
+		-Ddataset.tree.tables-per-namespace=50 \
+		-Ddataset.tree.views-per-namespace=25 \
 		-Dworkload.weighted-workload-on-tree-dataset.duration-in-minutes=30 $(GRADLE_OPTS)
 
 # Full benchmark suite
