@@ -103,15 +103,14 @@ class WeightedWorkloadOnTreeDataset extends Simulation {
               val expectedProperties: Map[String, String] = (0 until dp.numTableProperties)
                 .map(id => s"initialattribute_$id" -> s"$id")
                 .toMap
-              val expectedLocation =
-                s"${dp.defaultBaseLocation}/$catalog/${namespace.mkString("/")}/${table}"
+              val locationPrefix = s"${dp.defaultBaseLocation}/"
 
               session
                 .set("catalogName", catalog)
                 .set("multipartNamespace", namespace.mkString(0x1f.toChar.toString))
                 .set("tableName", table)
                 .set("initialProperties", expectedProperties)
-                .set("location", expectedLocation)
+                .set("locationPrefix", locationPrefix)
             }.exec(tblActions.fetchTable)
           }
       }
