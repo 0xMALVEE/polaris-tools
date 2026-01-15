@@ -134,11 +134,13 @@ class ReadTreeDataset extends Simulation {
   private val tableThroughput = wp.readTreeDataset.tableThroughput
   private val viewThroughput = wp.readTreeDataset.viewThroughput
 
+  private val verifyCatalogsUsers = if (setupActions.isOAuth2Auth) 1 else 0
+
   setUp(
     setupActions.continuouslyRefreshOauthToken().inject(atOnceUsers(1)).protocols(httpProtocol),
     setupActions.waitForAuthentication
       .inject(atOnceUsers(1))
-      .andThen(verifyCatalogs.inject(atOnceUsers(1)).protocols(httpProtocol))
+      .andThen(verifyCatalogs.inject(atOnceUsers(verifyCatalogsUsers)).protocols(httpProtocol))
       .andThen(verifyNamespaces.inject(atOnceUsers(namespaceThroughput)).protocols(httpProtocol))
       .andThen(verifyTables.inject(atOnceUsers(tableThroughput)).protocols(httpProtocol))
       .andThen(verifyViews.inject(atOnceUsers(viewThroughput)).protocols(httpProtocol))
