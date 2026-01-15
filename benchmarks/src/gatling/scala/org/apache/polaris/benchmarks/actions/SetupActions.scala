@@ -40,8 +40,8 @@ case class SetupActions(
 ) {
 
   /**
-   * Shared access token reference that can be passed to all action classes.
-   * For SIGV4 auth, this is set to a placeholder value since signing happens per-request.
+   * Shared access token reference that can be passed to all action classes. For SIGV4 auth, this is
+   * set to a placeholder value since signing happens per-request.
    */
   val accessToken: AtomicReference[String] = new AtomicReference()
 
@@ -51,15 +51,14 @@ case class SetupActions(
   private val shouldRefreshToken: AtomicBoolean = new AtomicBoolean(true)
 
   /**
-   * Authentication actions instance that handles the actual OAuth token operations.
-   * Only used for OAuth2 authentication.
+   * Authentication actions instance that handles the actual OAuth token operations. Only used for
+   * OAuth2 authentication.
    */
   private lazy val authActions: AuthenticationActions =
     AuthenticationActions(cp, ap, accessToken)
 
   /**
-   * SIGV4 request signer for AWS-style authentication.
-   * Only used when auth type is SIGV4.
+   * SIGV4 request signer for AWS-style authentication. Only used when auth type is SIGV4.
    */
   lazy val sigv4Signer: Option[Sigv4RequestSigner] = ap.sigv4.map(Sigv4RequestSigner(_))
 
@@ -74,11 +73,11 @@ case class SetupActions(
   def isOAuth2Auth: Boolean = ap.isOAuth2
 
   /**
-   * Configures the HTTP protocol with appropriate authentication.
-   * For OAuth2: No special protocol config needed (uses Bearer token in headers)
-   * For SIGV4: Adds SignatureCalculator to sign each request
+   * Configures the HTTP protocol with appropriate authentication. For OAuth2: No special protocol
+   * config needed (uses Bearer token in headers) For SIGV4: Adds SignatureCalculator to sign each
+   * request
    */
-  def configureHttpProtocol(baseProtocol: HttpProtocolBuilder): HttpProtocolBuilder = {
+  def configureHttpProtocol(baseProtocol: HttpProtocolBuilder): HttpProtocolBuilder =
     ap.authType match {
       case AuthType.Sigv4 =>
         sigv4Signer match {
@@ -89,7 +88,6 @@ case class SetupActions(
       case AuthType.OAuth2 =>
         baseProtocol
     }
-  }
 
   /**
    * Continuously refreshes the OAuth token at the configured interval specified in
@@ -100,7 +98,7 @@ case class SetupActions(
    *
    * @return ScenarioBuilder that continuously refreshes the token
    */
-  def continuouslyRefreshOauthToken(): ScenarioBuilder = {
+  def continuouslyRefreshOauthToken(): ScenarioBuilder =
     if (ap.isSigv4) {
       scenario("SIGV4 auth - no token refresh needed")
         .exec { session =>
@@ -119,7 +117,6 @@ case class SetupActions(
             .pause(interval)
         }
     }
-  }
 
   /**
    * Refreshes the OAuth token at the configured interval specified in
@@ -132,7 +129,7 @@ case class SetupActions(
    * @param duration Total duration to keep refreshing the token
    * @return ScenarioBuilder that refreshes the token for the specified duration
    */
-  def refreshOauthForDuration(duration: FiniteDuration): ScenarioBuilder = {
+  def refreshOauthForDuration(duration: FiniteDuration): ScenarioBuilder =
     if (ap.isSigv4) {
       scenario("SIGV4 auth - no token refresh needed")
         .exec { session =>
@@ -151,7 +148,6 @@ case class SetupActions(
             .pause(interval)
         }
     }
-  }
 
   /**
    * Waits for the authentication token to be available before proceeding. This is useful when the
@@ -162,7 +158,7 @@ case class SetupActions(
    *
    * @return ScenarioBuilder that waits for token availability
    */
-  val waitForAuthentication: ScenarioBuilder = {
+  val waitForAuthentication: ScenarioBuilder =
     if (ap.isSigv4) {
       scenario("SIGV4 auth ready")
         .exec { session =>
@@ -175,7 +171,6 @@ case class SetupActions(
           pause(1.second)
         }
     }
-  }
 
   /**
    * Stops the token refresh loop. This is useful when the authentication is performed by a separate

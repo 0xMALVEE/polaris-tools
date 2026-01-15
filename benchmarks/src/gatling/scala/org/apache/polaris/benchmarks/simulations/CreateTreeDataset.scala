@@ -39,8 +39,8 @@ import scala.concurrent.duration._
  * Polaris or any Iceberg REST Catalog implementation.
  *
  * When `skip-catalog-creation` is false (default), the simulation creates catalogs using the
- * Polaris Management API. When true, it assumes a pre-existing catalog and only creates
- * namespaces, tables, and views using the standard Iceberg REST API.
+ * Polaris Management API. When true, it assumes a pre-existing catalog and only creates namespaces,
+ * tables, and views using the standard Iceberg REST API.
  */
 class CreateTreeDataset extends Simulation {
   private val logger = LoggerFactory.getLogger(getClass)

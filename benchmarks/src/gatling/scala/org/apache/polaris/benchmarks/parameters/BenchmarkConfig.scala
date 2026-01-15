@@ -51,13 +51,12 @@ object BenchmarkConfig {
       None
     }
 
-    def getOptionalString(config: Config, path: String): Option[String] = {
+    def getOptionalString(config: Config, path: String): Option[String] =
       if (config.hasPath(path) && !config.getIsNull(path)) {
         Some(config.getString(path)).filter(_.nonEmpty)
       } else {
         None
       }
-    }
 
     val authParams = AuthParameters(
       authType,

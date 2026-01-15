@@ -107,10 +107,8 @@ case class NamespaceActions(
    */
   def namespaceFetchFeeder(): Feeder[Any] = namespaceCreationFeeder()
     .map { row =>
-      val catalogName = row("catalogName").asInstanceOf[String]
-      val namespaceUnixPath = row("namespacePath").asInstanceOf[Seq[String]].mkString("/")
       val location = Map(
-        "location" -> s"${dp.defaultBaseLocation}/$catalogName/$namespaceUnixPath/"
+        "location" -> s"${dp.defaultBaseLocation}/"
       )
       row ++ Map(
         "location" -> location

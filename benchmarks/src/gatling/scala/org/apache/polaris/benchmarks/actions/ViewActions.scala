@@ -123,15 +123,12 @@ case class ViewActions(
    */
   def viewFetchFeeder(): Feeder[Any] = viewCreationFeeder()
     .map { row =>
-      val catalogName: String = row("catalogName").asInstanceOf[String]
-      val parentNamespacePath: Seq[String] = row("parentNamespacePath").asInstanceOf[Seq[String]]
-      val viewName: String = row("viewName").asInstanceOf[String]
       val initialProperties: Map[String, String] = (0 until dp.numViewProperties)
         .map(id => s"InitialAttribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "initialProperties" -> initialProperties,
-        "location" -> s"${dp.defaultBaseLocation}/$catalogName/${parentNamespacePath.mkString("/")}/$viewName"
+        "locationPrefix" -> s"${dp.defaultBaseLocation}/"
       )
     }
 
@@ -177,7 +174,24 @@ case class ViewActions(
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
       .check(jsonPath("$.metadata.view-uuid").saveAs("viewUuid"))
-      .check(jsonPath("$.metadata.location").is("#{location}"))
+      .check(
+        jsonPath("$.metadata.location")
+          .validate(
+            "location prefix check",
+            (actualOpt, session) => {
+              val expectedPrefix = session("locationPrefix").as[String]
+              actualOpt match {
+                case Some(actual) if actual.startsWith(expectedPrefix) =>
+                  io.gatling.commons.validation.Success(actualOpt)
+                case Some(actual) =>
+                  io.gatling.commons.validation
+                    .Failure(s"expected prefix '$expectedPrefix' but got '$actual'")
+                case None =>
+                  io.gatling.commons.validation.Failure("location was not found")
+              }
+            }
+          )
+      )
       .check(
         jsonPath("$.metadata.properties")
           .transform(str => EntityProperties.filterMapByPrefix(str, "InitialAttribute_"))

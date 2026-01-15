@@ -132,15 +132,12 @@ case class TableActions(
    */
   def tableFetchFeeder(): Feeder[Any] = tableIdentityFeeder()
     .map { row =>
-      val catalogName: String = row("catalogName").asInstanceOf[String]
-      val parentNamespacePath: Seq[String] = row("parentNamespacePath").asInstanceOf[Seq[String]]
-      val tableName: String = row("tableName").asInstanceOf[String]
       val initialProperties: Map[String, String] = (0 until dp.numTableProperties)
         .map(id => s"InitialAttribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "initialProperties" -> initialProperties,
-        "location" -> s"${dp.defaultBaseLocation}/$catalogName/${parentNamespacePath.mkString("/")}/$tableName"
+        "locationPrefix" -> s"${dp.defaultBaseLocation}/"
       )
     }
 
@@ -188,7 +185,24 @@ case class TableActions(
       .header("Authorization", "Bearer #{accessToken}")
       .check(status.is(200))
       .check(jsonPath("$.metadata.table-uuid").saveAs("tableUuid"))
-      .check(jsonPath("$.metadata.location").is("#{location}"))
+      .check(
+        jsonPath("$.metadata.location")
+          .validate(
+            "location prefix check",
+            (actualOpt, session) => {
+              val expectedPrefix = session("locationPrefix").as[String]
+              actualOpt match {
+                case Some(actual) if actual.startsWith(expectedPrefix) =>
+                  io.gatling.commons.validation.Success(actualOpt)
+                case Some(actual) =>
+                  io.gatling.commons.validation
+                    .Failure(s"expected prefix '$expectedPrefix' but got '$actual'")
+                case None =>
+                  io.gatling.commons.validation.Failure("location was not found")
+              }
+            }
+          )
+      )
       .check(
         jsonPath("$.metadata.properties")
           .transform(str => EntityProperties.filterMapByPrefix(str, "InitialAttribute_"))

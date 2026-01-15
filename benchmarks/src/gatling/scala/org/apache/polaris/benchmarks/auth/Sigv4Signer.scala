@@ -132,9 +132,8 @@ case class Sigv4Signer(
     mac.doFinal(data.getBytes(StandardCharsets.UTF_8))
   }
 
-  private def hmacSha256Hex(key: Array[Byte], data: String): String = {
+  private def hmacSha256Hex(key: Array[Byte], data: String): String =
     hmacSha256(key, data).map("%02x".format(_)).mkString
-  }
 
   private def getSignatureKey(
       key: String,
@@ -150,13 +149,12 @@ case class Sigv4Signer(
   }
 
   /**
-   * Encodes a URL path following AWS S3/MinIO conventions.
-   * Only unreserved characters (A-Z, a-z, 0-9, -, _, ., ~, /) are left unencoded.
-   * All other characters are percent-encoded.
+   * Encodes a URL path following AWS S3/MinIO conventions. Only unreserved characters (A-Z, a-z,
+   * 0-9, -, _, ., ~, /) are left unencoded. All other characters are percent-encoded.
    */
   private def encodePath(path: String): String = {
     val result = new StringBuilder
-    for (char <- path) {
+    for (char <- path)
       if (isUnreservedChar(char)) {
         result.append(char)
       } else {
@@ -166,14 +164,12 @@ case class Sigv4Signer(
           result.append(f"${b & 0xff}%02X")
         }
       }
-    }
     result.toString
   }
 
-  private def isUnreservedChar(c: Char): Boolean = {
+  private def isUnreservedChar(c: Char): Boolean =
     (c >= 'A' && c <= 'Z') ||
-    (c >= 'a' && c <= 'z') ||
-    (c >= '0' && c <= '9') ||
-    c == '-' || c == '_' || c == '.' || c == '~' || c == '/'
-  }
+      (c >= 'a' && c <= 'z') ||
+      (c >= '0' && c <= '9') ||
+      c == '-' || c == '_' || c == '.' || c == '~' || c == '/'
 }

@@ -1,0 +1,114 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Polaris-Tools Benchmark Build & Run Commands
+# =============================================
+
+# Prerequisites
+# -------------
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+
+# Build
+# -----
+./gradlew build                    # Build the project
+./gradlew compileGatlingScala      # Compile Gatling tests only
+
+# =============================================
+# MinIO S3 Tables Commands
+# =============================================
+
+# --- CREATE DATASET (run first) ---
+make minio-create-light            # 2 tables, 1 view, 5 concurrency
+make minio-create-medium           # 90 tables, 45 views, 20 concurrency
+make minio-create-high             # 1,280 tables, 640 views, 50 concurrency
+make minio-stress                  # 31K tables, 15K views, 100 concurrency
+
+# --- READ DATASET (requires create first) ---
+make minio-read-light              # 5 concurrent readers
+make minio-read-medium             # 20 concurrent readers
+make minio-read-high               # 50 concurrent readers
+make minio-read-stress             # 100 concurrent readers
+
+# --- MIXED READ/WRITE (requires create first) ---
+make minio-mixed-light             # 20 ops/sec, 80% reads, 2 min
+make minio-mixed-medium            # 50 ops/sec, 70% reads, 5 min
+make minio-mixed-high              # 200 ops/sec, 60% reads, 10 min
+make minio-mixed-stress            # 500 ops/sec, 50% reads, 15 min
+
+# --- COMMITS (requires create first) ---
+make minio-commits-light           # 7 commits/sec, 1 min
+make minio-commits-medium          # 30 commits/sec, 3 min
+make minio-commits-high            # 75 commits/sec, 5 min
+make minio-commits-stress          # 150 commits/sec, 10 min
+
+# --- WEIGHTED WORKLOAD (requires create first) ---
+make minio-weighted-light          # 2 min duration
+make minio-weighted-medium         # 5 min duration
+make minio-weighted-high           # 10 min duration
+make minio-weighted-stress         # 30 min duration
+
+# --- FULL BENCHMARK SUITES ---
+make minio-full-benchmark-light    # All light load simulations
+make minio-full-benchmark-medium   # All medium load simulations
+make minio-full-benchmark-high     # All high load simulations
+make minio-full-benchmark-stress   # All stress test simulations
+
+# --- CUSTOM PARAMETERS ---
+make minio-create-custom NS_WIDTH=4 NS_DEPTH=4 TABLES=20 VIEWS=10 CREATE_CONCURRENCY=50
+make minio-read-custom READ_CONCURRENCY=100
+make minio-mixed-custom THROUGHPUT=1000 READ_RATIO=0.8 DURATION=10
+make minio-commits-custom TABLE_COMMITS=500 VIEW_COMMITS=200 DURATION=5
+make minio-weighted-custom DURATION=30
+
+# --- ENTERPRISE SCALE ---
+make minio-read-enterprise         # 500 concurrent readers
+make minio-commits-enterprise      # 3K commits/sec, 10 min
+make minio-mixed-enterprise        # 10K ops/sec, 15 min
+make minio-commits-extreme         # 15K commits/sec, 15 min
+make minio-mixed-extreme           # 50K ops/sec, 20 min
+
+# =============================================
+# Reports
+# =============================================
+make reports-list                  # List all generated reports
+make reports-clean                 # Delete all reports
+
+# =============================================
+# Polaris (OAuth2) Commands
+# =============================================
+make create-dataset-simulation     # Create namespaces, tables, views
+make read-simulation               # Read existing dataset
+make read-update-simulation        # Mixed read/write workload
+make create-commits-simulation     # Create commits on tables/views
+make weighted-workload-simulation  # Weighted workload
+
+# =============================================
+# Direct Gradle Commands
+# =============================================
+./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.CreateTreeDataset -Dconfig.file=./application.conf
+./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadTreeDataset -Dconfig.file=./application.conf
+./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.ReadUpdateTreeDataset -Dconfig.file=./application.conf
+./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.CreateCommits -Dconfig.file=./application.conf
+./gradlew gatlingRun --simulation org.apache.polaris.benchmarks.simulations.WeightedWorkloadOnTreeDataset -Dconfig.file=./application.conf
+
+# =============================================
+# Help
+# =============================================
+make help                          # Show all available commands
+make minio-help                    # Show all MinIO commands
