@@ -86,7 +86,7 @@ case class ViewActions(
       val fields: Seq[ViewField] = (1 to dp.numColumnsPerView)
         .map(id => ViewField(id = id, name = s"column$id", `type` = "int", required = true))
       val properties: Map[String, String] = (0 until dp.numViewProperties)
-        .map(id => s"InitialAttribute_$id" -> s"$id")
+        .map(id => s"initialattribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "tableName" -> tableName, // Reference the table at the same index as the view
@@ -110,7 +110,7 @@ case class ViewActions(
     .flatMap(updateId =>
       viewIdentityFeeder()
         .map { row =>
-          row ++ Map("newProperty" -> s"""{"NewAttribute_$updateId": "NewValue_$updateId"}""")
+          row ++ Map("newProperty" -> s"""{"newattribute_$updateId": "NewValue_$updateId"}""")
         }
     )
 
@@ -124,7 +124,7 @@ case class ViewActions(
   def viewFetchFeeder(): Feeder[Any] = viewCreationFeeder()
     .map { row =>
       val initialProperties: Map[String, String] = (0 until dp.numViewProperties)
-        .map(id => s"InitialAttribute_$id" -> s"$id")
+        .map(id => s"initialattribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "initialProperties" -> initialProperties,
@@ -194,7 +194,7 @@ case class ViewActions(
       )
       .check(
         jsonPath("$.metadata.properties")
-          .transform(str => EntityProperties.filterMapByPrefix(str, "InitialAttribute_"))
+          .transform(str => EntityProperties.filterMapByPrefix(str, "initialattribute_"))
           .is("#{initialProperties}")
       )
   )

@@ -101,7 +101,7 @@ class WeightedWorkloadOnTreeDataset extends Simulation {
 
               // Checked in `fetchTable`
               val expectedProperties: Map[String, String] = (0 until dp.numTableProperties)
-                .map(id => s"InitialAttribute_$id" -> s"$id")
+                .map(id => s"initialattribute_$id" -> s"$id")
                 .toMap
               val expectedLocation =
                 s"${dp.defaultBaseLocation}/$catalog/${namespace.mkString("/")}/${table}"

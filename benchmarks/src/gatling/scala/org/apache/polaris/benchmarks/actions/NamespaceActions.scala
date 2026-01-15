@@ -88,7 +88,7 @@ case class NamespaceActions(
   def namespaceCreationFeeder(): Feeder[Any] = namespaceIdentityFeeder()
     .map { row =>
       val properties: Map[String, String] = (0 until dp.numNamespaceProperties)
-        .map(id => s"InitialAttribute_$id" -> s"$id")
+        .map(id => s"initialattribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "initialProperties" -> properties,
@@ -127,7 +127,7 @@ case class NamespaceActions(
     .flatMap(updateId =>
       namespaceIdentityFeeder()
         .map { row =>
-          val updates = Map(s"UpdatedAttribute_$updateId" -> s"$updateId")
+          val updates = Map(s"updatedattribute_$updateId" -> s"$updateId")
           row ++ Map(
             "jsonPropertyUpdates" -> Json.toJson(updates).toString()
           )
@@ -179,7 +179,7 @@ case class NamespaceActions(
       .check(jsonPath("$.namespace").is("#{namespaceJsonPath}"))
       .check(
         jsonPath("$.properties")
-          .transform(str => EntityProperties.filterMapByPrefix(str, "InitialAttribute_"))
+          .transform(str => EntityProperties.filterMapByPrefix(str, "initialattribute_"))
           .is("#{initialProperties}")
       )
       .check(

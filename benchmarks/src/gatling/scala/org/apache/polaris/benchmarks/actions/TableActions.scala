@@ -96,7 +96,7 @@ case class TableActions(
       val fields: Seq[TableField] = (1 to dp.numColumnsPerTable)
         .map(id => TableField(id = id, name = s"column$id", `type` = "int", required = true))
       val properties: Map[String, String] = (0 until dp.numTableProperties)
-        .map(id => s"InitialAttribute_$id" -> s"$id")
+        .map(id => s"initialattribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "schemasType" -> "struct",
@@ -119,7 +119,7 @@ case class TableActions(
     .flatMap(updateId =>
       tableIdentityFeeder()
         .map { row =>
-          row ++ Map("newProperty" -> s"""{"NewAttribute_$updateId": "NewValue_$updateId"}""")
+          row ++ Map("newProperty" -> s"""{"newattribute_$updateId": "NewValue_$updateId"}""")
         }
     )
 
@@ -133,7 +133,7 @@ case class TableActions(
   def tableFetchFeeder(): Feeder[Any] = tableIdentityFeeder()
     .map { row =>
       val initialProperties: Map[String, String] = (0 until dp.numTableProperties)
-        .map(id => s"InitialAttribute_$id" -> s"$id")
+        .map(id => s"initialattribute_$id" -> s"$id")
         .toMap
       row ++ Map(
         "initialProperties" -> initialProperties,
@@ -205,7 +205,7 @@ case class TableActions(
       )
       .check(
         jsonPath("$.metadata.properties")
-          .transform(str => EntityProperties.filterMapByPrefix(str, "InitialAttribute_"))
+          .transform(str => EntityProperties.filterMapByPrefix(str, "initialattribute_"))
           .is("#{initialProperties}")
       )
   )
